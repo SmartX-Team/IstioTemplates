@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: just-ubuntu
+  labels:
+    app: just-ubuntu
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: just-ubuntu
+    spec:
+      containers:
+      - image: ubuntu
+        name: just-ubuntu
+        env:

@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv-1-baseline
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /tmp/data/pv-1-baseline
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv-2-baseline
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /tmp/data/pv-2-baseline
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-mysql-baseline
+  labels:
+    app: wordpress-baseline
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: wordpress-baseline
+    tier: mysql
+  clusterIP: None
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim-baseline
+  labels:
+    app: wordpress-baseline
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: wordpress-mysql-baseline
+  labels:
+    app: wordpress-baseline
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpress-baseline
+        tier: mysql
+    spec:
+      containers:
+      - image: mysql:5.6
+        name: mysql-baseline
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-persistent-storage-baseline
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage-baseline
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim-baseline
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress-baseline
+  labels:
+    app: wordpress-baseline
+spec:
+  ports:
+    - port: 80
+  selector:
+    app: wordpress-baseline
+    tier: frontend
+  type: NodePort
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wp-pv-claim-baseline
+  labels:
+    app: wordpress-baseline
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: wordpress-baseline
+  labels:
+    app: wordpress-baseline
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: wordpress-baseline
+        tier: frontend
+    spec:
+      containers:
+      - image: wordpress:4.8-apache
+        name: wordpress-baseline
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: wordpress-mysql-baseline
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 80
+          name: wordpress
+        volumeMounts:
+        - name: wordpress-persistent-storage-baseline
+          mountPath: /var/www/html
+      volumes:
+      - name: wordpress-persistent-storage-baseline
+        persistentVolumeClaim:
+          claimName: wp-pv-claim-baseline
